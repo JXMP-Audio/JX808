@@ -13,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish a GitHub release (off: only build and validate)"
+        description: "Publish a GitHub release (every build is released; off only for a test run)"
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write

@@ -20,8 +20,10 @@ if [ -x "$LOCAL_HISE/HISE Standalone" ] && [ -d "$LOCAL_HISE/source" ]; then
 	HISE_BIN="${HISE_BIN:-$LOCAL_HISE/HISE Standalone}"
 	HISE_PATH="${HISE_PATH:-$(cd "$LOCAL_HISE/source" && pwd)}"
 fi
-HISE_BIN="${HISE_BIN:-/home/xg/Utils/HISE.4.1.0.debian.x64/HISE Standalone}"
-HISE_PATH="${HISE_PATH:-/media/xg/Data/DEV/SomeVSTs/HISE}"
+if [ -z "${HISE_BIN:-}" ] || [ -z "${HISE_PATH:-}" ]; then
+	echo "HISE not found: put it in ../HISE (binary + source/) or set HISE_BIN and HISE_PATH" >&2
+	exit 1
+fi
 PROJUCER="$HISE_PATH/tools/projucer/Projucer"
 # HISE units need about 1.5 GB each: half the cores by default, override with JOBS=...
 JOBS="${JOBS:-$(( ($(nproc) + 1) / 2 ))}"
