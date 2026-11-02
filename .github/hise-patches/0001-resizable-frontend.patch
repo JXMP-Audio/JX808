@@ -1,0 +1,133 @@
+diff --git a/hi_frontend/frontend/FrontEndProcessor.cpp b/hi_frontend/frontend/FrontEndProcessor.cpp
+index a7b72bb..8d8c890 100644
+--- a/hi_frontend/frontend/FrontEndProcessor.cpp
++++ b/hi_frontend/frontend/FrontEndProcessor.cpp
+@@ -731,8 +731,22 @@ FrontendStandaloneApplication::MainWindow::MainWindow(String name) : DocumentWin
+ 	setContentOwned(new AudioWrapper(), true);
+ 
+ 	centreWithSize(getWidth(), getHeight());
+-		
+-	setResizable(false, false);
++
++	// JXMP patch: free resizing with the aspect ratio of the interface
++	setResizable(true, false);
++
++	if (auto c = getConstrainer())
++	{
++		const int w = getContentComponent()->getWidth();
++		const int h = getContentComponent()->getHeight();
++
++		if (w > 0 && h > 0)
++		{
++			c->setFixedAspectRatio((double)w / (double)h);
++			c->setSizeLimits(w / 3, h / 3, w * 3, h * 3);
++		}
++	}
++
+ 	setVisible(true);
+ }
+ 
+diff --git a/hi_frontend/frontend/FrontEndProcessor.h b/hi_frontend/frontend/FrontEndProcessor.h
+index 71a2408..1a2e00f 100644
+--- a/hi_frontend/frontend/FrontEndProcessor.h
++++ b/hi_frontend/frontend/FrontEndProcessor.h
+@@ -329,8 +329,9 @@ public:
+ 			if (splashScreen != nullptr)
+ 				splashScreen->setBounds(getLocalBounds());
+ 
++			// JXMP patch: the window is resizable, the editor follows it and rescales itself
+ 			if(editor != nullptr)
+-				editor->setBounds(0, 0, editor->getWidth(), editor->getHeight());
++				editor->setBounds(getLocalBounds());
+ 		}
+ 
+ 	private:
+diff --git a/hi_frontend/frontend/FrontendProcessorEditor.cpp b/hi_frontend/frontend/FrontendProcessorEditor.cpp
+index a036317..36f9dd0 100644
+--- a/hi_frontend/frontend/FrontendProcessorEditor.cpp
++++ b/hi_frontend/frontend/FrontendProcessorEditor.cpp
+@@ -161,6 +161,7 @@ AudioProcessorEditor(fp)
+ 	{
+ 		fp.originalSizeX = w;
+ 		fp.originalSizeY = h;
++		fp.updateResizeLimits();
+ 		fp.setGlobalScaleFactor(fp.scaleFactor, true);
+ 	});
+ 	
+@@ -191,6 +192,21 @@ AudioProcessorEditor(fp)
+         
+ 	if (FullInstrumentExpansion::isEnabled(getMainController()))
+ 		getMainController()->getLockFreeDispatcher().addPresetLoadListener(this);
++
++	setResizable(true, true);
++	updateResizeLimits();
++}
++
++void FrontendProcessorEditor::updateResizeLimits()
++{
++	if (originalSizeX <= 0 || originalSizeY <= 0)
++		return;
++
++	if (auto c = getConstrainer())
++	{
++		c->setFixedAspectRatio((double)originalSizeX / (double)originalSizeY);
++		c->setSizeLimits(originalSizeX / 2, originalSizeY / 2, originalSizeX * 3, originalSizeY * 3);
++	}
+ }
+ 
+ FrontendProcessorEditor::~FrontendProcessorEditor()
+@@ -263,6 +279,8 @@ void FrontendProcessorEditor::setGlobalScaleFactor(float newScaleFactor, bool fo
+ 		container->setTransform(scaler);
+         
+         auto tl = findParentComponentOfClass<FrontendStandaloneApplication::AudioWrapper>();
++
++		const ScopedValueSetter<bool> svs(scaleUpdateInProgress, true);
+         
+         if (tl != nullptr)
+         {
+@@ -288,6 +306,22 @@ void FrontendProcessorEditor::resized()
+ #else
+ 	int width = originalSizeX;
+ 	int height = originalSizeY;
++
++	// JXMP patch: the editor was resized from outside (host, window manager), scale the interface
++	// to the new size and remember it as the global scale factor
++	if (!scaleUpdateInProgress && originalSizeX > 0 && originalSizeY > 0 && getWidth() > 0 && getHeight() > 0)
++	{
++		auto s = jmin((float)getWidth() / (float)originalSizeX, (float)getHeight() / (float)originalSizeY);
++
++		if (std::abs(s - scaleFactor) > 0.001f && s > 0.2f)
++		{
++			scaleFactor = s;
++			container->setTransform(AffineTransform::scale(scaleFactor));
++
++			if (auto gm = dynamic_cast<GlobalSettingManager*>(getAudioProcessor()))
++				gm->setGlobalScaleFactor(scaleFactor, dontSendNotification);
++		}
++	}
+ #endif
+ 
+     container->setBounds(0, 0, width, height);
+diff --git a/hi_frontend/frontend/FrontendProcessorEditor.h b/hi_frontend/frontend/FrontendProcessorEditor.h
+index c27877e..ac458f0 100644
+--- a/hi_frontend/frontend/FrontendProcessorEditor.h
++++ b/hi_frontend/frontend/FrontendProcessorEditor.h
+@@ -125,6 +125,10 @@ public:
+ 
+     void setGlobalScaleFactor(float newScaleFactor, bool forceUpdate=false);
+ 
++	/** Free resizing (JXMP patch): the host or the window manager can drag the editor to any
++	    size, the interface keeps its aspect ratio and is scaled to fit. */
++	void updateResizeLimits();
++
+ 	void resized() override;
+ 
+ 	void resetInterface()
+@@ -149,6 +153,7 @@ private:
+ 	ScopedPointer<DebugLoggerComponent> debugLoggerComponent;
+     
+ 	float scaleFactor = 1.0f;
++	bool scaleUpdateInProgress = false;
+ 
+     int originalSizeX = 0;
+     int originalSizeY = 0;

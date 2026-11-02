@@ -1,0 +1,29 @@
+diff --git a/hi_core/hi_modules/effects/fx/SlotFX.cpp b/hi_core/hi_modules/effects/fx/SlotFX.cpp
+index dc62e54..19db7eb 100644
+--- a/hi_core/hi_modules/effects/fx/SlotFX.cpp
++++ b/hi_core/hi_modules/effects/fx/SlotFX.cpp
+@@ -464,6 +464,9 @@ HardcodedSwappableEffect::HardcodedSwappableEffect(MainController* mc, bool isPo
+ {
+ 	tempoSyncer.publicModValue = &modValue;
+ 
++	// JXMP patch: MIDI out for hardcoded nodes (see DllBoundaryTempoSyncer::sendToMidiOut)
++	tempoSyncer.sendToMidiOut = [mc](const HiseEvent& e) { mc->sendToMidiOut(e); };
++
+ 	
+ 
+ 	polyHandler.setTempoSyncer(&tempoSyncer);
+diff --git a/hi_dsp_library/snex_basics/snex_Types.h b/hi_dsp_library/snex_basics/snex_Types.h
+index 25c3395..2068e0e 100644
+--- a/hi_dsp_library/snex_basics/snex_Types.h
++++ b/hi_dsp_library/snex_basics/snex_Types.h
+@@ -498,6 +498,10 @@ struct DllBoundaryTempoSyncer: public hise::TempoListener
+ 	// Oh boy, what a disgrace...
+ 	ModValue* publicModValue = nullptr;
+ 
++	/** JXMP patch: lets a hardcoded node send (artificial) events to the plugin's MIDI output.
++	    Set by the HardcodedSwappableEffect, empty elsewhere. */
++	std::function<void(const hise::HiseEvent&)> sendToMidiOut;
++
+ 	// And now we don't even care anymore about tucking stuff in here...
+ 	hise::AdditionalEventStorage* additionalEventStorage = nullptr;
+ 

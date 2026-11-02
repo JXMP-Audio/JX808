@@ -1,0 +1,3 @@
+# keep these byte-exact on Windows runners (git apply / bash)
+*.patch -text
+*.sh text eol=lf

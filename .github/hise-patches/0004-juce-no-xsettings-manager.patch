@@ -1,0 +1,41 @@
+diff --git a/JUCE/modules/juce_gui_basics/native/x11/juce_linux_XWindowSystem.cpp b/JUCE/modules/juce_gui_basics/native/x11/juce_linux_XWindowSystem.cpp
+index 48d0a51..32cc4fa 100644
+--- a/JUCE/modules/juce_gui_basics/native/x11/juce_linux_XWindowSystem.cpp
++++ b/JUCE/modules/juce_gui_basics/native/x11/juce_linux_XWindowSystem.cpp
+@@ -187,8 +187,11 @@ XWindowSystemUtilities::XSettings::XSettings (::Display* d)
+     settingsWindow = X11Symbols::getInstance()->xGetSelectionOwner (display,
+                                                                     Atoms::getCreating (display, "_XSETTINGS_S0"));
+ 
+-    jassert (settingsWindow != None);
+-    update();
++    // JXMP patch: window managers without an XSETTINGS manager (Hyprland, Sway, i3...) have no
++    // owner; reading a property of window 0 raises BadWindow and the default X error handler
++    // terminates the host (e.g. the Ardour plugin scanner)
++    if (settingsWindow != None)
++        update();
+ }
+ 
+ XWindowSystemUtilities::XSetting XWindowSystemUtilities::XSettings::getSetting (const String& name) const
+@@ -203,6 +206,9 @@ XWindowSystemUtilities::XSetting XWindowSystemUtilities::XSettings::getSetting (
+ 
+ void XWindowSystemUtilities::XSettings::update()
+ {
++    if (settingsWindow == None)
++        return;
++
+     const GetXProperty prop { display,
+                               settingsWindow,
+                               settingsAtom,
+@@ -3032,6 +3038,12 @@ void XWindowSystem::initialiseXSettings()
+ {
+     xSettings = std::make_unique<XWindowSystemUtilities::XSettings> (display);
+ 
++    if (xSettings->getSettingsWindow() == None)   // JXMP patch: no XSETTINGS manager
++    {
++        xSettings.reset();
++        return;
++    }
++
+     X11Symbols::getInstance()->xSelectInput (display,
+                                              xSettings->getSettingsWindow(),
+                                              StructureNotifyMask | PropertyChangeMask);

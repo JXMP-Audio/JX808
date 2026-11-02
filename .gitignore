@@ -1,0 +1,21 @@
+# HISE auto-generated build output
+Binaries/
+Binaries-*/
+DspNetworks/Binaries/
+PooledResources/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+UserPresets/db.json
+/build/
+
+# Not part of the plugin (local only): notes, design docs, tests and their workflow, assistant instructions
+CLAUDE.md
+/docs/design/
+/tests/
+/.github/workflows/tests.yml

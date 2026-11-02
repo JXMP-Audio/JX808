@@ -1,0 +1,16 @@
+diff --git a/hi_core/hi_modules/effects/fx/SlotFX.cpp b/hi_core/hi_modules/effects/fx/SlotFX.cpp
+index 4c4393e..dc62e54 100644
+--- a/hi_core/hi_modules/effects/fx/SlotFX.cpp
++++ b/hi_core/hi_modules/effects/fx/SlotFX.cpp
+@@ -603,6 +603,11 @@ bool HardcodedSwappableEffect::setEffect(const String& factoryId, bool /*unused*
+ 		effectUpdater.sendMessage(sendNotificationAsync, currentEffect, somethingChanged, opaqueNode->numParameters);
+ 
+ 		tempoSyncer.tempoChanged(mc_->getBpm());
++
++		// JXMP patch: a node was set successfully, so the state is complete again. Without this an
++		// effect restored as "No network" (e.g. exported without the DLL) and set later by a script
++		// keeps saving the stale tree: no parameters and no complex data in presets / DAW sessions.
++		properlyLoaded = true;
+ 	}
+ 	else
+ 	{
